@@ -5,48 +5,84 @@ from elements import *
 
 user_data = {}
 
-async def handle_component(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик выбора компонента"""
-    choice = update.message.text
+def get_rh_combinations_from_values(patient_values):
+    """
+    Возвращает все возможные комбинации резус-фактора 
+    для генотипа, заданного значениями
+    """
+    rh_dict = {
+            rh_D: ("D", "dd"), rh_dd: "dd", rh_D_unknown: "dd", rh_D_weak: ("D", "dd"), rh_D_partial: "dd",
+            rh_C_unknown: "CC", rh_CC: "CC", rh_Cc: ("CC", "Cc", "cc"), rh_cc: ("Cc", "cc"),
+            rh_E_unknown: "ee", rh_EE: ("EE", "Ee"), rh_Ee: ("EE", "Ee", "ee"), rh_ee: "ee"
+                   }
+    # 1. Собираем все возможные варианты для каждого значения пациента
+    options_lists = [rh_dict[val] for val in patient_values]
     
-    if choice == platelets:
-        context.chat_data['component'] = choice
-        await update.message.reply_text("Выберите группу крови пациента", reply_markup=blood_group_keyboard)        
-    elif choice == plasma:
-        context.chat_data['component'] = choice
-        await update.message.reply_text("Выберите группу крови пациента", reply_markup=blood_group_keyboard)  
-    elif choice in [blood, cryoprecipitate]:
-        context.chat_data['component'] = choice
-        await update.message.reply_text("Выберите резус-фактор:", reply_markup=rh_keyboard)
-    elif choice == "🔙 Назад":
+    # Генерируем комбинации
+    combinations = [""]
+    for options in options_lists:
+        new_combinations = []
+        for combo in combinations:
+            for option in options:
+                new_combinations.append(combo + option)
+        combinations = new_combinations
+    
+    return combinations
+
+async def handle_component(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #Обработчик выбора компонента
+    choice = update.message.text  
+    if choice == "🔙 Назад":
         await update.message.reply_text("Выберите компонент крови:", reply_markup=main_keyboard)
+    else:
+        context.chat_data['component'] = choice
+        await update.message.reply_text("Выберите группу крови пациента", reply_markup=blood_group_keyboard)
 
 async def handle_blood_group(update:Update, context:ContextTypes.DEFAULT_TYPE):
-    blood_group = update.message.text
+    context.chat_data['blood_group']  = update.message.text
     component = context.chat_data['component']    
-    result_text = f"""
+    if component == blood:
+        await update.message.reply_text(
+        f"Вы выбрали {context.chat_data['blood_group']}, теперь выберите резус-фактор пациента", 
+        reply_markup=rh_keyboard_D, 
+        parse_mode="Markdown"
+    )
+    else:
+        result_text = f"""
         ✅ Подбор завершен!
 
         🧬 **Параметры пациента:**
-        • Группа крови: {blood_group}
+        • Группа крови: {context.chat_data['blood_group'] }
         • Компонент: {component}
 
         💡 **Рекомендуемые компоненты:**
-        • {get_compatible_components(component, blood_group, "")}"""
-    
-    await update.message.reply_text(
-        result_text, 
-        reply_markup=main_keyboard,  # Возвращаем основную клавиатуру
-        parse_mode='Markdown'
-    )
+        • {get_compatible_components(component, context.chat_data['blood_group'] , "")}"""
 
-async def handle_rh_factor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик выбора резус-фактора"""
-    user_id = update.message.from_user.id
-    rh_factor = update.message.text
-    
-    # Получаем сохраненную группу крови
-    blood_group = user_data.get(user_id, {}).get('blood_group', 'не указана')
+        await update.message.reply_text(
+            result_text, 
+            reply_markup=main_keyboard, 
+            parse_mode="Markdown"
+        )
+async def handle_rh_factor_D(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.chat_data['rh_factor_D'] = update.message.text
+    await update.message.reply_text(   
+        "Выберите С-часть резус-фактора",      
+        reply_markup=rh_keyboard_C,
+        parse_mode="Markdown"
+    )
+async def handle_rh_factor_C(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.chat_data['rh_factor_C'] = update.message.text
+    await update.message.reply_text(
+        "Выберите E-часть резус-фактора",           
+        reply_markup=rh_keyboard_E, 
+        parse_mode="Markdown"
+    )
+async def handle_rh_factor_E(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #Обработчик выбора резус-фактора
+    rh_factor_E = update.message.text
+    component = context.chat_data['component']
+    blood_group = context.chat_data['blood_group']
+    rh_factor_common = [context.chat_data['rh_factor_D'], context.chat_data['rh_factor_C'], rh_factor_E]
     
     # Формируем результат
     result_text = f"""
@@ -54,21 +90,20 @@ async def handle_rh_factor(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         🧬 **Параметры пациента:**
         • Группа крови: {blood_group}
-        • Резус-фактор: {rh_factor}
+        • Резус-фактор: {context.chat_data['rh_factor_D']}{context.chat_data['rh_factor_C']}{rh_factor_E}
 
         💡 **Рекомендуемые компоненты:**
-        • {get_compatible_components(blood_group, rh_factor)}
+        • {get_compatible_components(component, blood_group, rh_factor_common)}
     """
     
     await update.message.reply_text(
         result_text, 
-        reply_markup=main_keyboard,  # Возвращаем основную клавиатуру
+        reply_markup=main_keyboard,
         parse_mode='Markdown'
     )
 
-def get_compatible_components(component: str, blood_group: str, rh_factor: str) -> str:
-    """Функция для определения совместимых компонентов крови"""
-    # Простая логика для примера
+def get_compatible_components(component: str, blood_group: str, rh_factor_common: str) -> str:
+    #Функция для определения совместимых компонентов крови
     if component == platelets:
         if blood_group == blood_group_O:
             return """📋 *Варианты тромбоцитов:*
@@ -81,8 +116,175 @@ def get_compatible_components(component: str, blood_group: str, rh_factor: str) 
                     
                     • Тромбоциты в добавочном растворе
                       → Совместимость: все группы ✅"""
+        elif blood_group_A:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группы А, О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группы А, AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
+        elif blood_group_A2:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группы А, О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группы А, AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
+        elif blood_group_B:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группы B, О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группы B, AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
+        elif blood_group_AB:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группы АB, О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группа AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
+        elif blood_group_A2B:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группы АB, О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группа AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
+        elif blood_group_unknown:
+            return """📋 *Варианты тромбоцитов:*
+                    
+                    • Тромбоциты в плазме донора (из крови)
+                      → Совместимость: группа О
+                    
+                    • Тромбоциты в плазме донора (аферез)  
+                      → Совместимость: группа AB
+                    
+                    • Тромбоциты в добавочном растворе
+                      → Совместимость: все группы ✅"""
         else:
             return "Неизвестная комбинация компонентов"
+    elif component == plasma:
+        if blood_group == blood_group_O:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группы О, AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: все группы ✅"""
+        elif blood_group_A:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группы А, AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группы А, AB"""
+        elif blood_group_A2:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группы А, AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группы А, AB"""
+        elif blood_group_B:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группы B, AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группы B, AB"""
+        elif blood_group_AB:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группа AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группа AB"""
+        elif blood_group_A2B:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группа AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группа AB"""
+        elif blood_group_unknown:
+            return """📋 *Варианты плазмы:*
+                    
+                    • Плазма
+                      → Совместимость: группа AB
+                    
+                    • Плазма (аферез)
+                      → Совместимость: группа AB"""
+    elif component == cryoprecipitate:        
+        return """📋 *Варианты криопреципитата:*                    
+                      
+                      → Совместимость: все группы ✅"""        
+    elif component == blood:        
+        result = get_rh_combinations_from_values(rh_factor_common)
+        message ="\n"
+        for i, combo in enumerate(result, 1):
+            message += f"{i}. {combo}\n"
+        if blood_group == blood_group_O:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа О
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_A:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа А, О
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_A2:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа О
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_B:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа B, О
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_AB:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: все группы ✅
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_A2B:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа О, B
+                      → Возможные резус-факторы: {message}"""
+        elif blood_group_unknown:
+            return f"""📋 *Варианты эритроцитов:*
+
+                      → Совместимость: группа О
+                      → Возможные резус-факторы: {message}"""
 
 async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик неизвестных сообщений"""
