@@ -8,8 +8,8 @@ main_keyboard = ReplyKeyboardMarkup([
 
 #Выбор группы крови
 blood_group_keyboard = ReplyKeyboardMarkup([
-    [KeyboardButton(blood_group_A), KeyboardButton(blood_group_A2), KeyboardButton(blood_group_B)],
-    [KeyboardButton(blood_group_AB), KeyboardButton(blood_group_A2B), KeyboardButton(blood_group_O)],
+    [KeyboardButton(blood_group_O), KeyboardButton(blood_group_A), KeyboardButton(blood_group_A2)],
+    [KeyboardButton(blood_group_B), KeyboardButton(blood_group_AB), KeyboardButton(blood_group_A2B)],
     [KeyboardButton(blood_group_unknown), KeyboardButton(back)]
 ], resize_keyboard=True, one_time_keyboard=True)
 

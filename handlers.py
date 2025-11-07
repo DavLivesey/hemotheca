@@ -66,7 +66,7 @@ async def handle_blood_group(update:Update, context:ContextTypes.DEFAULT_TYPE):
               f"• Группа крови: {context.chat_data['blood_group'] }\n"\
               f"• Компонент: {component}\n\n"\
               "💡 **Рекомендуемые компоненты:**\n"\
-              f"• {get_compatible_components(component, context.chat_data['blood_group'] , "")}"
+              f"• {get_compatible_components(component, context.chat_data['blood_group'] , '')}"
 
         await update.message.reply_text(
             result_text, 
