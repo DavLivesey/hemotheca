@@ -6,42 +6,33 @@ from elements import *
 user_data = {}
 
 def get_rh_combinations_from_values(patient_values):
-    print(patient_values)
-    """
-    Возвращает все возможные комбинации резус-фактора 
-    для генотипа, заданного значениями
-    """
+    #Возвращает все возможные комбинации резус-фактора 
+    #для генотипа, заданного значениями
     rh_dict = {
-        # D система - всегда 2 символа
         rh_D: ["D-", "dd"], 
         rh_dd: ["dd"], 
         rh_D_unknown: ["dd"], 
         rh_D_weak: ["D-", "dd"], 
         rh_D_partial: ["dd"],
         
-        # C система - всегда 2 символа
         rh_C_unknown: ["CC"], 
         rh_CC: ["CC"], 
         rh_Cc: ["CC", "Cc", "cc"], 
         rh_cc: ["cc"],
         
-        # E система - всегда 2 символа
         rh_E_unknown: ["ee"], 
         rh_EE: ["EE", "Ee"], 
         rh_Ee: ["EE", "Ee", "ee"], 
         rh_ee: ["ee"]
     }
-    
-    # 1. Собираем все возможные варианты для каждого значения пациента
+
     options_lists = []
     for val in patient_values:
         if val in rh_dict:
             options = rh_dict[val]
-            # Если это не список, делаем списком
             if not isinstance(options, list):
                 options = [options]
             options_lists.append(options)
-    # 2. Генерируем комбинации
     combinations = [""]
     for options in options_lists:
         new_combinations = []
