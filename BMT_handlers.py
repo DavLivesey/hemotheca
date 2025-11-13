@@ -160,7 +160,6 @@ async def handle_donor_blood_group_with_BMT(update: Update, context: ContextType
               f"• Компонент: {component}\n\n"\
               "**Параметры донора КМ или ГСК:**\n"\
               f"• Группа крови: {context.chat_data['donor_blood_group']}\n\n"\
-              "**Рекомендуемые компоненты:**\n"\
               f"• {get_compatible_components_with_BMT(component, context.chat_data['recipient_blood_group'], context.chat_data['donor_blood_group'], '', '')}"
 
         await update.message.reply_text(
@@ -230,7 +229,6 @@ async def handle_donor_rh_factor_E_with_BMT(update: Update, context: ContextType
         f"• Резус-фактор реципиента (пациента): {context.chat_data['recipient_rh_D']}{context.chat_data['recipient_rh_C']}{context.chat_data['recipient_rh_E']}\n\n"\
         f"• Группа крови донора: {context.chat_data['donor_blood_group']}\n"\
         f"• Резус-фактор донора: {context.chat_data['donor_rh_D']}{context.chat_data['donor_rh_C']}{donor_rh_factor_E}\n\n"\
-        "**Рекомендуемые компоненты:**\n"\
         f"• {get_compatible_components_with_BMT(component, recipient_blood_group, donor_blood_group, rh_factor_common, donor_rh_factor_common)}"
     
     await update.message.reply_text(
@@ -250,22 +248,18 @@ def get_compatible_components_with_BMT(component: str, blood_group: str, donor_b
             or(blood_group in (blood_group_O, blood_group_A2) and donor_blood_group == blood_group_AB)\
             or (blood_group in(blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_A2B)\
             or blood_group == blood_group_unknown:
-            return "Варианты гранулоцитов:\n\n"\
-                    "→ Совместимость: группа О"
+            return "Совместимость: группа О"
         elif blood_group == donor_blood_group == blood_group_A\
             or (blood_group == blood_group_AB and donor_blood_group ==blood_group_A)\
             or (blood_group == blood_group_A and donor_blood_group ==blood_group_AB):
-            return "Варианты гранулоцитов:\n\n"\
-                    "→ Совместимость: группа А, О"
+            return "Совместимость: группы А, О"
 
         elif (blood_group in (blood_group_AB, blood_group_A2B, blood_group_B) and donor_blood_group == blood_group_B)\
             or (blood_group in (blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_AB)\
             or (blood_group in (blood_group_B, blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_A2B):
-            return "Варианты гранулоцитов:\n\n"\
-                    "→ Совместимость: группа B, О"
+            return "Совместимость: группы B, О"
         elif blood_group == donor_blood_group == blood_group_AB:
-            return "Варианты гранулоцитов:\n\n"\
-                    "→ Совместимость: группы группы О, А, В, АВ"
+            return "Совместимость: группы О, А, В, АВ"
     if component == platelets:
         if blood_group == donor_blood_group == blood_group_O:
             return "Варианты тромбоцитов:\n\n"\
@@ -318,17 +312,14 @@ def get_compatible_components_with_BMT(component: str, blood_group: str, donor_b
             return "Неизвестная комбинация компонентов"
     elif component == plasma:
         if blood_group == donor_blood_group == blood_group_O:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы О, A, B, AB"
                     
         elif blood_group in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group in (blood_group_O, blood_group_A, blood_group_A2):
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы A, AB"
         elif blood_group in(blood_group_O, blood_group_B, blood_group_A2) and donor_blood_group == blood_group_B:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы B, AB"
         elif blood_group in (blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_O\
                 or blood_group in (blood_group_AB, blood_group_A2B, blood_group_B) and donor_blood_group == blood_group_A\
@@ -336,11 +327,10 @@ def get_compatible_components_with_BMT(component: str, blood_group: str, donor_b
                 or blood_group in (blood_group_A, blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_B\
                 or donor_blood_group in (blood_group_AB, blood_group_A2B, blood_group_unknown)\
                 or blood_group == blood_group_unknown:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группа AB"
     elif component == cryoprecipitate:        
-        return "Варианты криопреципитата:\n\n"\
+        return "Криопреципитат:\n\n"\
                 "→ Совместимость: 0, А, В, АВ"
     elif component == blood:        
         result = get_rh_combinations_from_values_with_BTM(rh_factor_common, donor_rh_factor_common)
@@ -353,22 +343,22 @@ def get_compatible_components_with_BMT(component: str, blood_group: str, donor_b
             or blood_group in (blood_group_O, blood_group_A2) and donor_blood_group == blood_group_AB\
             or blood_group in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_A2B\
             or blood_group == blood_group_unknown:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группа О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group in (blood_group_A, blood_group_AB) and donor_blood_group == blood_group_A\
             or blood_group == blood_group_A and donor_blood_group == blood_group_AB:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы А, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group in (blood_group_B, blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_B\
             or blood_group in (blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_AB\
             or blood_group in (blood_group_A2B, blood_group_AB, blood_group_B) and donor_blood_group == blood_group_A2B:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы B, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group == donor_blood_group == blood_group_AB:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы O, A, B, AB\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         

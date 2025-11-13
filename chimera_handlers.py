@@ -119,7 +119,6 @@ async def handle_chimera_blood_group(update: Update, context: ContextTypes.DEFAU
               f"• Компонент: {component}\n\n"\
               "**Параметры химеры:**\n"\
               f"• Группа крови: {context.chat_data['chimera_blood_group']}\n\n"\
-              "**Рекомендуемые компоненты:**\n"\
               f"• {get_compatible_components_chimera(component, context.chat_data['recipient_blood_group'], context.chat_data['chimera_blood_group'], '', '')}"
 
         await update.message.reply_text(
@@ -192,7 +191,6 @@ async def handle_chimera_rh_factor_e(update: Update, context: ContextTypes.DEFAU
         f"• Резус-фактор реципиента (пациента): {context.chat_data['recipient_rh_D']}{context.chat_data['recipient_rh_C']}{context.chat_data['recipient_rh_E']}\n\n"\
         f"• Группа крови химеры: {context.chat_data['chimera_blood_group']}\n"\
         f"• Резус-фактор химеры: {context.chat_data['chimera_rh_D']}{context.chat_data['chimera_rh_C']}{chimera_rh_factor_E}\n\n"\
-        "**Рекомендуемые компоненты:**\n"\
         f"• {get_compatible_components_chimera(component, recipient_blood_group, chimera_blood_group, rh_factor_common, chimera_rh_factor_common)}"
     
     await update.message.reply_text(
@@ -208,14 +206,14 @@ def get_compatible_components_chimera(component: str, blood_group: str, chimera_
         if blood_group in (blood_group_AB, blood_group_A2B) and chimera_blood_group == blood_group_B\
             or blood_group in (blood_group_B, blood_group_A2B) and chimera_blood_group == blood_group_AB\
             or blood_group in (blood_group_B, blood_group_AB) and chimera_blood_group == blood_group_A2B:
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группы B, О"
         elif blood_group == blood_group_A and chimera_blood_group == blood_group_AB\
             or blood_group == blood_group_AB and chimera_blood_group == blood_group_A:
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группы А, О"
         else:
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группа О"
     elif component == platelets:
         if blood_group in (blood_group_A, blood_group_A2) and chimera_blood_group == blood_group_O\
@@ -251,21 +249,18 @@ def get_compatible_components_chimera(component: str, blood_group: str, chimera_
         if blood_group in (blood_group_A, blood_group_A2) and chimera_blood_group == blood_group_O\
             or blood_group in (blood_group_O, blood_group_A2) and chimera_blood_group == blood_group_A\
             or blood_group in (blood_group_O, blood_group_A) and chimera_blood_group == blood_group_A2:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы A, AB"
         elif blood_group == blood_group_B and chimera_blood_group == blood_group_O\
             or blood_group in (blood_group_O, blood_group_A2) and chimera_blood_group == blood_group_B:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы B, AB"
         else:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группа AB"   
         
     elif component == cryoprecipitate:        
-        return "Варианты криопреципитата:\n\n"\
+        return "Криопреципитат:\n\n"\
                 "→ Совместимость: 0, А, В, АВ"
     elif component == blood:      
         result = get_rh_combinations_from_values_chimera(rh_factor_common, chimera_rh_factor_common)
@@ -275,16 +270,16 @@ def get_compatible_components_chimera(component: str, blood_group: str, chimera_
         if blood_group in (blood_group_AB, blood_group_A2B) and chimera_blood_group == blood_group_B\
             or blood_group in (blood_group_B, blood_group_A2B) and chimera_blood_group == blood_group_AB\
             or blood_group in (blood_group_B, blood_group_AB) and chimera_blood_group == blood_group_A2B:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы B, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group == blood_group_A and chimera_blood_group == blood_group_AB\
             or blood_group == blood_group_AB and chimera_blood_group == blood_group_A:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы A, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         else:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группа О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         

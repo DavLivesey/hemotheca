@@ -155,7 +155,6 @@ async def handle_mother_blood_group_with_HDN(update: Update, context: ContextTyp
               f"• Компонент: {component}\n\n"\
               "**Параметры матери:**\n"\
               f"• Группа крови: {context.chat_data['mother_blood_group']}\n\n"\
-              "**Рекомендуемые компоненты:**\n"\
               f"• {get_compatible_components_with_HDN(component, context.chat_data['recipient_blood_group'], context.chat_data['mother_blood_group'], '', '')}"
 
         await update.message.reply_text(
@@ -225,7 +224,6 @@ async def handle_mother_rh_factor_e_with_HDN(update: Update, context: ContextTyp
         f"• Резус-фактор реципиента (пациента): {context.chat_data['recipient_rh_D']}{context.chat_data['recipient_rh_C']}{context.chat_data['recipient_rh_E']}\n\n"\
         f"• Группа крови матери пациента: {context.chat_data['mother_blood_group']}\n"\
         f"• Резус-фактор матери пациента: {context.chat_data['mother_rh_D']}{context.chat_data['mother_rh_C']}{mother_rh_factor_E}\n\n"\
-        "**Рекомендуемые компоненты:**\n"\
         f"• {get_compatible_components_with_HDN(component, recipient_blood_group, mother_blood_group, rh_factor_common, mother_rh_factor_common)}"
     
     await update.message.reply_text(
@@ -245,21 +243,21 @@ def get_compatible_components_with_HDN(component: str, blood_group: str, mother_
             or(blood_group in (blood_group_O, blood_group_A2) and mother_blood_group == blood_group_AB)\
             or (blood_group in(blood_group_O, blood_group_A, blood_group_A2) and mother_blood_group == blood_group_A2B)\
             or blood_group == blood_group_unknown:
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группа О"
         elif blood_group == mother_blood_group == blood_group_A\
             or (blood_group == blood_group_AB and mother_blood_group ==blood_group_A)\
             or (blood_group == blood_group_A and mother_blood_group ==blood_group_AB):
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группа А, О"
 
         elif (blood_group in (blood_group_AB, blood_group_A2B, blood_group_B) and mother_blood_group == blood_group_B)\
             or (blood_group in (blood_group_B, blood_group_A2B) and mother_blood_group == blood_group_AB)\
             or (blood_group in (blood_group_B, blood_group_AB, blood_group_A2B) and mother_blood_group == blood_group_A2B):
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группа B, О"
         elif blood_group == mother_blood_group == blood_group_AB:
-            return "Варианты гранулоцитов:\n\n"\
+            return "Гранулоциты:\n\n"\
                     "→ Совместимость: группы группы О, А, В, АВ"
     if component == platelets:
         if blood_group == mother_blood_group == blood_group_O:
@@ -313,17 +311,14 @@ def get_compatible_components_with_HDN(component: str, blood_group: str, mother_
             return "Неизвестная комбинация компонентов"
     elif component == plasma:
         if blood_group == mother_blood_group == blood_group_O:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы О, A, B, AB"
                     
         elif blood_group in (blood_group_O, blood_group_A, blood_group_A2) and mother_blood_group in (blood_group_O, blood_group_A, blood_group_A2):
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы A, AB"
         elif blood_group in(blood_group_O, blood_group_B, blood_group_A2) and mother_blood_group == blood_group_B:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группы B, AB"
         elif blood_group in (blood_group_AB, blood_group_A2B) and mother_blood_group == blood_group_O\
                 or blood_group in (blood_group_AB, blood_group_A2B, blood_group_B) and mother_blood_group == blood_group_A\
@@ -331,11 +326,10 @@ def get_compatible_components_with_HDN(component: str, blood_group: str, mother_
                 or blood_group in (blood_group_A, blood_group_AB, blood_group_A2B) and mother_blood_group == blood_group_B\
                 or mother_blood_group in (blood_group_AB, blood_group_A2B, blood_group_unknown)\
                 or blood_group == blood_group_unknown:
-            return "Варианты плазмы:\n\n"\
-                "• Плазма\n"\
+            return "Плазма\n"\
                 "→ Совместимость: группа AB"
     elif component == cryoprecipitate:        
-        return "Варианты криопреципитата:\n\n"\
+        return "Криопреципитат:\n\n"\
                 "→ Совместимость: 0, А, В, АВ"
     elif component == blood:        
         result = get_rh_combinations_from_values_with_HDN(rh_factor_common, MOTHER_RH_FACTOR_common)
@@ -348,22 +342,22 @@ def get_compatible_components_with_HDN(component: str, blood_group: str, mother_
             or blood_group in (blood_group_O, blood_group_A2) and mother_blood_group == blood_group_AB\
             or blood_group in (blood_group_O, blood_group_A, blood_group_A2) and mother_blood_group == blood_group_A2B\
             or blood_group == blood_group_unknown:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группа О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group in (blood_group_A, blood_group_AB) and mother_blood_group == blood_group_A\
             or blood_group == blood_group_A and mother_blood_group == blood_group_AB:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы А, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group in (blood_group_B, blood_group_AB, blood_group_A2B) and mother_blood_group == blood_group_B\
             or blood_group in (blood_group_B, blood_group_A2B) and mother_blood_group == blood_group_AB\
             or blood_group in (blood_group_A2B, blood_group_AB, blood_group_B) and mother_blood_group == blood_group_A2B:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы B, О\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         elif blood_group == mother_blood_group == blood_group_AB:
-            return "Варианты эритроцитов:\n\n"\
+            return "Эритроциты:\n\n"\
                     "→ Совместимость: группы O, A, B, AB\n"\
                     f"→ Возможная резус-принадлежность донора ЭСК: {message}"
         
