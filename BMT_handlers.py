@@ -4,15 +4,18 @@ from keyboards import *
 from elements import *
 
 
-BMT_STATES = range(5)
+BMT_STATES = range(10, 15)
+BMT_MULTI_STATES = range(15, 18)
+
 (BMT_CHOICE, RECIPIENT_BLOOD_GROUP, RECIPIENT_RH_FACTOR, DONOR_BLOOD_GROUP, DONOR_RH_FACTOR) = BMT_STATES
+(BMT_QUANTITY, BMT_MULTI_DATA, BMT_MULTI_RESULT) = BMT_MULTI_STATES
 
 
 def get_rh_combinations_from_values_with_BTM(patient_values, donor_values):
     #Возвращает все возможные комбинации резус-фактора 
     #для генотипа, заданного значениями
     rh_dict = {
-        "DD": ["D, dd"],
+        "DD": [" D, dd"],
         "Ddd" : ["dd"],
         "DD неизвестен": ["dd"],
         "ddD неизвестен": ["dd"],
@@ -93,24 +96,311 @@ def get_rh_combinations_from_values_with_BTM(patient_values, donor_values):
         combinations = new_combinations
     return combinations
 
+async def handle_bmt_procedure_cycle(update: Update, context: ContextTypes.DEFAULT_TYPE, next_step):
+    #Обработчик цикла для множественных ТКМ
+    current_procedure = context.chat_data['bmt_current_procedure']
+    total_procedures = context.chat_data['bmt_quantity']
+    
+    # Сохраняем данные текущей процедуры
+    procedure_data = {
+        'component': context.chat_data.get('component'),
+        'recipient_blood_group': context.chat_data.get('recipient_blood_group'),
+        'recipient_rh_D': context.chat_data.get('recipient_rh_D'),
+        'recipient_rh_C': context.chat_data.get('recipient_rh_C'),
+        'recipient_rh_E': context.chat_data.get('recipient_rh_E'),
+        'donor_blood_group': context.chat_data.get('donor_blood_group'),
+        'donor_rh_D': context.chat_data.get('donor_rh_D'),
+        'donor_rh_C': context.chat_data.get('donor_rh_C'),
+        'donor_rh_E': context.chat_data.get('donor_rh_E'),
+    }
+    
+    context.chat_data['bmt_procedures_data'].append(procedure_data)
+    
+    # Очищаем временные данные
+    keys_to_clear = ['donor_blood_group', 'donor_rh_D', 'donor_rh_C', 'donor_rh_E']
+    for key in keys_to_clear:
+        context.chat_data.pop(key, None)
+    
+    # Увеличиваем счетчик
+    current_procedure += 1
+    context.chat_data['bmt_current_procedure'] = current_procedure
+    
+    if current_procedure < total_procedures:
+        # Запрашиваем данные для следующей процедуры
+        await update.message.reply_text(
+            f"Данные для процедуры №{current_procedure} сохранены. "
+            f"Переходим к процедуре №{current_procedure + 1}. Выберите группу крови донора №{current_procedure + 1}:",
+            reply_markup=blood_group_keyboard
+        )
+        return DONOR_BLOOD_GROUP
+    else:
+        # Все процедуры обработаны, формируем итоговый результат
+        return await generate_final_bmt_result(update, context)
+
+def format_blood_compatibility(component, compatible_groups):
+    #Форматирует текст совместимости по группам крови
+    if component in [cryoprecipitate]:
+        return "→ Совместимость: 0, А, В, АВ"
+    if not compatible_groups:
+        return "Совместимость: не определена"    
+    if len(compatible_groups) == 1:
+        return f"Совместимость: группа {compatible_groups[0]}"
+    else:
+        groups_text = ", ".join(compatible_groups)
+        return f"Совместимость: группы {groups_text}"
+
+async def generate_final_bmt_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #Формирование итогового результата для множественных ТКМ
+    procedures_data = context.chat_data['bmt_procedures_data']
+    component = procedures_data[0]['component']  # Компонент одинаков для всех процедур
+    
+    # Собираем данные реципиента (они одинаковы для всех процедур)
+    recipient_data = {
+        'blood_group': procedures_data[0]['recipient_blood_group'],
+        'rh_D': procedures_data[0]['recipient_rh_D'],
+        'rh_C': procedures_data[0]['recipient_rh_C'],
+        'rh_E': procedures_data[0]['recipient_rh_E']
+    }
+    
+    # Собираем данные доноров
+    donors_data = []
+    for procedure in procedures_data:
+        donors_data.append({
+            'blood_group': procedure['donor_blood_group'],
+            'rh_D': procedure['donor_rh_D'],
+            'rh_C': procedure['donor_rh_C'],
+            'rh_E': procedure['donor_rh_E']
+        })
+    
+    # Формируем резус-факторы в нужном формате
+    recipient_rh = recipient_data['rh_D'] + recipient_data['rh_C'] + recipient_data['rh_E']
+    donors_rh = [donor['rh_D'] + donor['rh_C'] + donor['rh_E'] for donor in donors_data]
+    
+    # Вычисляем итоговые комбинации
+    final_rh_combinations = get_final_rh_combinations(recipient_rh, donors_rh)
+    final_blood_groups = get_final_blood_group_compatibility(
+        component,
+        recipient_data['blood_group'], 
+        [donor['blood_group'] for donor in donors_data]
+    )
+    
+    # Формируем результат
+    result_text = "✅ Подбор завершен для всех процедур!\n\n"
+    result_text += f"**Компонент:** {component}\n"
+    result_text += f"**Группа крови реципиента:** {recipient_data['blood_group']}\n"
+    result_text += f"**Резус-фактор реципиента:** {recipient_rh}\n\n"
+    
+    result_text += "**Трансплантации:**\n"
+    for i, donor in enumerate(donors_data, 1):
+        result_text += f"ТКМ №{i}:\n"
+        result_text += f"• Группа крови донора: {donor['blood_group']}\n"
+        result_text += f"• Резус-фактор донора: {donor['rh_D']}{donor['rh_C']}{donor['rh_E']}\n\n"
+    
+    # Добавляем итоговую совместимость
+    result_text += "**Итоговая совместимость:**\n\n"
+    
+    if component == blood:
+        # Для эритроцитов
+        blood_compatibility = format_blood_compatibility(component, final_blood_groups)
+        rh_compatibility = "→ Возможная резус-принадлежность донора ЭСК:\n"
+        for i, combo in enumerate(final_rh_combinations, 1):
+            rh_compatibility += f"{i}. {combo}\n"
+        
+        result_text += f"Эритроциты:\n\n{blood_compatibility}\n{rh_compatibility}"
+        
+    elif component == platelets:
+        # Для тромбоцитов с детализацией
+        result_text += get_compatible_components_with_BMT(
+            component, 
+            recipient_data['blood_group'],
+            donors_data[-1]['blood_group'],  # Для отображения вариантов берем последнего донора
+            "", ""
+        )
+        
+    elif component in [plasma, cryoprecipitate, granulocytes]:
+        # Для других компонентов
+        blood_compatibility = format_blood_compatibility(component, final_blood_groups)
+        
+        if component == plasma:
+            result_text += f"Плазма\n{blood_compatibility}"
+        elif component == cryoprecipitate:
+            result_text += f"Криопреципитат\n{blood_compatibility}"
+        elif component == granulocytes:
+            result_text += f"Гранулоциты\n{blood_compatibility}"
+    
+    # Очищаем временные данные
+    context.chat_data.pop('bmt_quantity', None)
+    context.chat_data.pop('bmt_current_procedure', None)
+    context.chat_data.pop('bmt_procedures_data', None)
+    
+    await update.message.reply_text(
+        result_text,
+        reply_markup=BMT_choice_keyboard,
+        parse_mode="Markdown"
+    )
+    return ConversationHandler.END
+
+def get_final_rh_combinations(recipient_rh, donors_rh_list):
+    #Вычисляет итоговые комбинации резус-фактора через все процедуры ТКМ
+    current_combinations = [recipient_rh]    
+    for donor_rh in donors_rh_list:
+        new_combinations = []        
+        for current_rh in current_combinations:
+            possible_combinations = get_rh_combinations_from_values_with_BTM(
+                [current_rh[0:2], current_rh[2:4], current_rh[4:6]],  # D, C, E реципиента
+                [donor_rh[0:2], donor_rh[2:4], donor_rh[4:6]]         # D, C, E донора
+            )
+            new_combinations.extend(possible_combinations)        
+        current_combinations = list(set(new_combinations))    
+    return current_combinations
+
 async def handle_BMT_choice_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Начало ConversationHandler для пациентов с ТКМ"""
+    #Начало ConversationHandler для пациентов с ТКМ
     context.chat_data['patient_type'] = 'with_bmt'
     await update.message.reply_text(
-        "Для пациента с ТКМ в анамнезе выберите компонент крови:", 
-        reply_markup=components_keyboard
+        "Для пациента с ТКМ в анамнезе выберите количество трансплантаций", 
+        reply_markup=ReplyKeyboardRemove()
     )
-    return BMT_CHOICE
+    return BMT_QUANTITY
 
-async def handle_BMT_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def get_final_blood_group_compatibility(component, recipient_blood_group, donors_blood_groups):
+    #Вычисляет итоговую совместимость по группе крови через все процедуры ТКМ с учетом компонента
+    current_compatibility = [recipient_blood_group]
+    
+    for donor_blood_group in donors_blood_groups:
+        new_compatibility = []
+        
+        for current_bg in current_compatibility:
+            # Определяем совместимость в зависимости от компонента
+            if component == granulocytes:
+                # Логика для гранулоцитов
+                if donor_blood_group == blood_group_O \
+                    or (current_bg in (blood_group_O, blood_group_A2, blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_A)\
+                    or donor_blood_group == blood_group_A2\
+                    or (current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_B)\
+                    or (current_bg in (blood_group_O, blood_group_A2) and donor_blood_group == blood_group_AB)\
+                    or (current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_A2B)\
+                    or current_bg == blood_group_unknown:
+                    compatible_groups = [blood_group_O]
+                elif current_bg == donor_blood_group == blood_group_A\
+                    or (current_bg == blood_group_AB and donor_blood_group == blood_group_A)\
+                    or (current_bg == blood_group_A and donor_blood_group == blood_group_AB):
+                    compatible_groups = [blood_group_A, blood_group_O]
+                elif (current_bg in (blood_group_AB, blood_group_A2B, blood_group_B) and donor_blood_group == blood_group_B)\
+                    or (current_bg in (blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_AB)\
+                    or (current_bg in (blood_group_B, blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_A2B):
+                    compatible_groups = [blood_group_B, blood_group_O]
+                elif current_bg == donor_blood_group == blood_group_AB:
+                    compatible_groups = [blood_group_O, blood_group_A, blood_group_B, blood_group_AB]
+                else:
+                    compatible_groups = [blood_group_O]
+                    
+            elif component == platelets:
+                # Логика для тромбоцитов
+                if current_bg == donor_blood_group == blood_group_O:
+                    compatible_groups = [blood_group_O]
+                elif current_bg in (blood_group_A, blood_group_A2) and donor_blood_group == blood_group_O\
+                    or current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group in (blood_group_A, blood_group_A2):
+                    compatible_groups = [blood_group_A, blood_group_O]
+                elif current_bg in (blood_group_B, blood_group_A2B) and donor_blood_group in (blood_group_O, blood_group_B)\
+                    or current_bg == blood_group_O and donor_blood_group in (blood_group_B, blood_group_A2B):
+                    compatible_groups = [blood_group_B, blood_group_O]
+                elif current_bg == blood_group_AB and donor_blood_group in (blood_group_O, blood_group_AB):
+                    compatible_groups = [blood_group_AB, blood_group_O]
+                else:
+                    compatible_groups = [blood_group_O]
+                    
+            elif component == plasma:
+                # Логика для плазмы
+                if current_bg == donor_blood_group == blood_group_O:
+                    compatible_groups = [blood_group_O, blood_group_A, blood_group_B, blood_group_AB]
+                elif current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group in (blood_group_O, blood_group_A, blood_group_A2):
+                    compatible_groups = [blood_group_A, blood_group_AB]
+                elif current_bg in (blood_group_O, blood_group_B, blood_group_A2) and donor_blood_group == blood_group_B:
+                    compatible_groups = [blood_group_B, blood_group_AB]
+                else:
+                    compatible_groups = [blood_group_AB]
+                    
+            elif component == cryoprecipitate:
+                # Для криопреципитата всегда все группы
+                compatible_groups = [blood_group_O, blood_group_A, blood_group_B, blood_group_AB]
+                
+            elif component == blood:
+                # Логика для эритроцитов
+                if donor_blood_group in (blood_group_A2, blood_group_unknown, blood_group_O) \
+                    or current_bg in (blood_group_O, blood_group_A2, blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_A\
+                    or current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_B\
+                    or current_bg in (blood_group_O, blood_group_A2) and donor_blood_group == blood_group_AB\
+                    or current_bg in (blood_group_O, blood_group_A, blood_group_A2) and donor_blood_group == blood_group_A2B\
+                    or current_bg == blood_group_unknown:
+                    compatible_groups = [blood_group_O]
+                elif current_bg in (blood_group_A, blood_group_AB) and donor_blood_group == blood_group_A\
+                    or current_bg == blood_group_A and donor_blood_group == blood_group_AB:
+                    compatible_groups = [blood_group_A, blood_group_O]
+                elif current_bg in (blood_group_B, blood_group_AB, blood_group_A2B) and donor_blood_group == blood_group_B\
+                    or current_bg in (blood_group_B, blood_group_A2B) and donor_blood_group == blood_group_AB\
+                    or current_bg in (blood_group_A2B, blood_group_AB, blood_group_B) and donor_blood_group == blood_group_A2B:
+                    compatible_groups = [blood_group_B, blood_group_O]
+                elif current_bg == donor_blood_group == blood_group_AB:
+                    compatible_groups = [blood_group_O, blood_group_A, blood_group_B, blood_group_AB]
+                else:
+                    compatible_groups = [blood_group_O]
+            else:
+                compatible_groups = [blood_group_O]
+            
+            new_compatibility.extend(compatible_groups)
+        
+        # Убираем дубликаты и оставляем только уникальные группы
+        current_compatibility = list(set(new_compatibility))
+    
+    return current_compatibility
+
+async def handle_BMT_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    quantity_text = update.message.text
+    
+    try:
+        quantity = int(quantity_text)
+        if quantity < 0:
+            await update.message.reply_text(
+                "Пожалуйста, введите положительное количество трансплантаций", 
+                reply_markup=ReplyKeyboardRemove()
+            )
+            return BMT_QUANTITY
+        elif quantity == 0:
+            await update.message.reply_text(
+                "В анамнезе данного пациента не было ТКМ, пожалуйста, сделайте правильный выбор", 
+                reply_markup=BMT_choice_keyboard
+            )
+            return ConversationHandler.END
+        elif quantity == 1:
+            await update.message.reply_text("Выберите компонент крови:", reply_markup=components_keyboard)
+            return BMT_CHOICE
+        else:
+            context.chat_data['bmt_quantity'] = quantity
+            context.chat_data['bmt_current_procedure'] = 0
+            context.chat_data['bmt_procedures_data'] = []
+            
+            await update.message.reply_text(
+                f"Будет введено данных для {quantity} трансплантаций. "
+                f"Начнем с процедуры №1. Выберите компонент крови:",
+                reply_markup=components_keyboard
+            )
+            return BMT_CHOICE
+            
+    except ValueError:
+        await update.message.reply_text(
+            "Пожалуйста, введите число",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return BMT_QUANTITY
+
+"""async def handle_BMT_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #Обработчик главного меню
     context.chat_data['status'] = update.message.text
     if update.message.text == BMT_in_past:
         await update.message.reply_text("Выберите компонент крови:", reply_markup=components_keyboard)
-    elif update.message.text == clear_patient:
-        await update.message.reply_text("Выберите компонент крови:", reply_markup=components_keyboard)
     else:
-        await update.message.reply_text("Эта часть еще в разработке", reply_markup=BMT_choice_keyboard)
+        await update.message.reply_text("Эта часть еще в разработке", reply_markup=BMT_choice_keyboard)"""
 
 async def handle_component_with_BMT(update: Update, context: ContextTypes.DEFAULT_TYPE):
     #Обработчик выбора компонента для пациентов с ТКМ
@@ -155,10 +445,10 @@ async def handle_donor_blood_group_with_BMT(update: Update, context: ContextType
     else:
         # Формируем результат
         result_text = f"✅ Подбор завершен!\n\n"\
-              "**Параметры пациента:**\n"\
-              f"• Группа крови: {context.chat_data['recipient_blood_group']}\n"\
               f"• Компонент: {component}\n\n"\
-              "**Параметры донора КМ или ГСК:**\n"\
+              "Параметры пациента:\n"\
+              f"• Группа крови: {context.chat_data['recipient_blood_group']}\n"\
+              "Параметры донора КМ или ГСК:\n"\
               f"• Группа крови: {context.chat_data['donor_blood_group']}\n\n"\
               f"• {get_compatible_components_with_BMT(component, context.chat_data['recipient_blood_group'], context.chat_data['donor_blood_group'], '', '')}"
 
@@ -215,28 +505,41 @@ async def handle_donor_rh_factor_C_with_BMT(update: Update, context: ContextType
     return DONOR_RH_FACTOR
 
 async def handle_donor_rh_factor_E_with_BMT(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    #Обработчик выбора резус-фактора донора
     donor_rh_factor_E = update.message.text
-    component = context.chat_data['component']
-    donor_blood_group = context.chat_data['donor_blood_group']
-    recipient_blood_group = context.chat_data['recipient_blood_group']
-    rh_factor_common = [context.chat_data['recipient_rh_D'], context.chat_data['recipient_rh_C'], context.chat_data['recipient_rh_E']]
-    donor_rh_factor_common = [context.chat_data['donor_rh_D'], context.chat_data['donor_rh_C'], donor_rh_factor_E]
+    context.chat_data['donor_rh_E'] = donor_rh_factor_E
     
-    # Формируем результат
-    result_text = "✅ Подбор завершен!\n\n"\
-        f"• Группа крови реципиента (пациента): {recipient_blood_group}\n"\
-        f"• Резус-фактор реципиента (пациента): {context.chat_data['recipient_rh_D']}{context.chat_data['recipient_rh_C']}{context.chat_data['recipient_rh_E']}\n\n"\
-        f"• Группа крови донора: {context.chat_data['donor_blood_group']}\n"\
-        f"• Резус-фактор донора: {context.chat_data['donor_rh_D']}{context.chat_data['donor_rh_C']}{donor_rh_factor_E}\n\n"\
-        f"• {get_compatible_components_with_BMT(component, recipient_blood_group, donor_blood_group, rh_factor_common, donor_rh_factor_common)}"
-    
-    await update.message.reply_text(
-        result_text, 
-        reply_markup=BMT_choice_keyboard,
-        parse_mode='Markdown'
-    )
-    return ConversationHandler.END
+    # Проверяем, множественные ли ТКМ
+    if context.chat_data.get('bmt_quantity', 1) > 1:
+        return await handle_bmt_procedure_cycle(update, context, None)
+    else:
+        # Одиночная процедура - стандартная логика
+        component = context.chat_data['component']
+        donor_blood_group = context.chat_data['donor_blood_group']
+        recipient_blood_group = context.chat_data['recipient_blood_group']
+        rh_factor_common = [
+            context.chat_data['recipient_rh_D'], 
+            context.chat_data['recipient_rh_C'], 
+            context.chat_data['recipient_rh_E']
+        ]
+        donor_rh_factor_common = [
+            context.chat_data['donor_rh_D'], 
+            context.chat_data['donor_rh_C'], 
+            donor_rh_factor_E
+        ]
+        
+        result_text = "✅ Подбор завершен!\n\n"\
+            f"• Группа крови реципиента: {recipient_blood_group}\n"\
+            f"• Резус-фактор реципиента: {context.chat_data['recipient_rh_D']}{context.chat_data['recipient_rh_C']}{context.chat_data['recipient_rh_E']}\n\n"\
+            f"• Группа крови донора: {context.chat_data['donor_blood_group']}\n"\
+            f"• Резус-фактор донора: {context.chat_data['donor_rh_D']}{context.chat_data['donor_rh_C']}{donor_rh_factor_E}\n\n"\
+            f"• {get_compatible_components_with_BMT(component, recipient_blood_group, donor_blood_group, rh_factor_common, donor_rh_factor_common)}"
+        
+        await update.message.reply_text(
+            result_text, 
+            reply_markup=BMT_choice_keyboard,
+            parse_mode='Markdown'
+        )
+        return ConversationHandler.END
 
 def get_compatible_components_with_BMT(component: str, blood_group: str, donor_blood_group: str, rh_factor_common: str, donor_rh_factor_common: str) -> str:
     #Функция для определения совместимых компонентов крови

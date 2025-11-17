@@ -4,7 +4,7 @@ from keyboards import *
 from elements import *
 
 
-CHIMERA_STATES = range(10, 15)
+CHIMERA_STATES = range(5, 10)
 (CHIMERA_CHOICE, CHIMERA_RECIPIENT_BLOOD_GROUP, CHIMERA_RECIPIENT_RH_FACTOR, CHIMERA_BLOOD_GROUP, CHIMERA_RH_FACTOR) = CHIMERA_STATES
 
 
@@ -114,9 +114,9 @@ async def handle_chimera_blood_group(update: Update, context: ContextTypes.DEFAU
     else:
         # Формируем результат
         result_text = f"✅ Подбор завершен!\n\n"\
+              f"• Компонент: {component}\n\n"\
               "**Параметры пациента:**\n"\
               f"• Группа крови: {context.chat_data['recipient_blood_group']}\n"\
-              f"• Компонент: {component}\n\n"\
               "**Параметры химеры:**\n"\
               f"• Группа крови: {context.chat_data['chimera_blood_group']}\n\n"\
               f"• {get_compatible_components_chimera(component, context.chat_data['recipient_blood_group'], context.chat_data['chimera_blood_group'], '', '')}"

@@ -6,7 +6,7 @@ from elements import *
 
 # Состояния для ConversationHandler
 
-HDN_STATES = range(5, 10)
+HDN_STATES = range(5)
 
 
 (HDN_CHOICE, HDN_RECIPIENT_BLOOD_GROUP, HDN_RECIPIENT_RH_FACTOR, HDN_MOTHER_BLOOD_GROUP, HDN_MOTHER_RH_FACTOR) = HDN_STATES
@@ -111,7 +111,7 @@ async def handle_component_with_HDN(update: Update, context: ContextTypes.DEFAUL
     #Обработчик выбора компонента для пациентов с ГБН
     context.chat_data['component'] = update.message.text
     await update.message.reply_text(
-        "Выберите группу крови реципиента (пациента) (пациента):", 
+        "Выберите группу крови реципиента (пациента):", 
         reply_markup=blood_group_keyboard
     )
     return HDN_RECIPIENT_BLOOD_GROUP
@@ -150,9 +150,9 @@ async def handle_mother_blood_group_with_HDN(update: Update, context: ContextTyp
     else:
         # Формируем результат
         result_text = f"✅ Подбор завершен!\n\n"\
+              f"• Компонент: {component}\n\n"\
               "**Параметры пациента:**\n"\
               f"• Группа крови: {context.chat_data['recipient_blood_group']}\n"\
-              f"• Компонент: {component}\n\n"\
               "**Параметры матери:**\n"\
               f"• Группа крови: {context.chat_data['mother_blood_group']}\n\n"\
               f"• {get_compatible_components_with_HDN(component, context.chat_data['recipient_blood_group'], context.chat_data['mother_blood_group'], '', '')}"

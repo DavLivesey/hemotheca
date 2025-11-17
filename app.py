@@ -27,6 +27,7 @@ def main():
             MessageHandler(filters.Text([BMT_in_past]), handle_BMT_choice_start)
         ],
         states={
+            BMT_QUANTITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_BMT_quantity)],
             BMT_CHOICE: [
                 MessageHandler(filters.Text([
                     blood, platelets, plasma, cryoprecipitate, granulocytes
@@ -72,7 +73,7 @@ def main():
             MessageHandler(filters.Text([back]), start)
         ]
     )
-    
+
     hdn_conv_handler = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Text([with_HDN]), handle_HDN_choice_start)
@@ -174,13 +175,8 @@ def main():
             MessageHandler(filters.Text([back]), start)
         ]
     )
-    # Обработчики
-    application.add_handler(CommandHandler("start", start))
-    
-    # Обработчики для обычных пациентов (без ТКМ)
-    application.add_handler(MessageHandler(filters.Text([clear_patient]), handle_regular_patient_choice))
-    
-    # ConversationHandler для пациентов с ТКМ
+
+     # ConversationHandler для пациентов с ТКМ
     application.add_handler(bmt_conv_handler)
 
     # ConversationHandler для пациентов с ГБН
@@ -188,6 +184,12 @@ def main():
 
     # ConversationHandler для пациентов с химерой
     application.add_handler(chimera_conv_handler)
+    
+    # Обработчики
+    application.add_handler(CommandHandler("start", start))
+    
+    # Обработчики для обычных пациентов (без ТКМ)
+    application.add_handler(MessageHandler(filters.Text([clear_patient]), handle_regular_patient_choice))  
     
     # Обработчики компонентов для обычных пациентов
     application.add_handler(MessageHandler(filters.Text([

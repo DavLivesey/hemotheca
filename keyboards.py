@@ -1,4 +1,4 @@
-from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from elements import *
 
 components_keyboard = ReplyKeyboardMarkup([
@@ -53,6 +53,7 @@ rh_keyboard_E_chimera = ReplyKeyboardMarkup([
 ], resize_keyboard=True, one_time_keyboard=True)
 
 def get_chimera_keyboard(rh_factor, recipient_element):
+    # Функция подбора клавиатуры при химере
     if rh_factor == "group":
         possible_groups = [blood_group_O, blood_group_A, blood_group_A2, blood_group_B, blood_group_AB, blood_group_A2B]
         possible_groups.remove(recipient_element)

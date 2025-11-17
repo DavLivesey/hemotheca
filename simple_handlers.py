@@ -4,9 +4,6 @@ from keyboards import *
 from elements import *
 
 
-user_data = {}
-
-
 def get_rh_combinations_from_values(patient_values):
     #Возвращает все возможные комбинации резус-фактора 
     #для генотипа, заданного значениями
@@ -14,7 +11,7 @@ def get_rh_combinations_from_values(patient_values):
         rh_D: [" D", "dd"], 
         rh_dd: ["dd"], 
         rh_D_unknown: ["dd"], 
-        rh_D_weak: ["D-", "dd"], 
+        rh_D_weak: [" D", "dd"], 
         rh_D_partial: ["dd"],
         
         rh_C_unknown: ["CC"], 
@@ -70,9 +67,9 @@ async def handle_blood_group(update:Update, context:ContextTypes.DEFAULT_TYPE):
     )
     else:
         result_text = f"✅ Подбор завершен!\n\n"\
+              f"• Компонент: {component}\n\n"\
               "**Параметры пациента:**\n"\
               f"• Группа крови: {context.chat_data['blood_group'] }\n"\
-              f"• Компонент: {component}\n\n"\
               f"• {get_compatible_components(component, context.chat_data['blood_group'] , '')}"
 
         await update.message.reply_text(
@@ -80,7 +77,6 @@ async def handle_blood_group(update:Update, context:ContextTypes.DEFAULT_TYPE):
             reply_markup=BMT_choice_keyboard, 
             parse_mode="Markdown"
         )
-    return ConversationHandler.END
 
 async def handle_rh_factor_D(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.chat_data['rh_factor_D'] = update.message.text
